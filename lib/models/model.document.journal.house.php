@@ -1,14 +1,14 @@
 <?php
 
 /*
- * Class SenateJournalDocumentModel
+ * Class HouseJournalDocumentModel
  * Legiscope - web site reflection framework
  *
  * Antonio A Hilario
  * Release license terms: GNU Public License V2
  */
 
-class SenateJournalDocumentModel extends SenateDocCommonDocumentModel {
+class HouseJournalDocumentModel extends UrlModel {
   
   var $title_vc256uniq = NULL;
   var $create_time_utx = NULL;
@@ -20,53 +20,10 @@ class SenateJournalDocumentModel extends SenateDocCommonDocumentModel {
 	var $content_blob = NULL;
 	var $pdf_fetch_time_utx = NULL;
 	var $pdf_url_vc4096 = NULL;
-	var $report_SenateCommitteeReportDocumentModel = NULL;
-  var $bill_SenateBillDocumentModel = NULL;
-  var $resolution_SenateResolutionDocumentModel = NULL;
 
   function __construct() {
     parent::__construct();
-    // $this->dump_accessor_defs_to_syslog();
-		// $this->recursive_dump($this->get_attrdefs(),'(marker) "Gippy"');
   }
-
-	function fetch_by_congress_sn( $congress, $house_session, $sn ) {/*{{{*/
-
-		$match = array(
-			'congress_tag' => $congress,
-			'session_tag' => $house_session,
-			'sn' => $sn,
-		);
-		$this->fetch($match, 'AND');
-		return $this->in_database() ? $this->id : NULL;
-
-	}/*}}}*/
-
-	function store(array $journal_data, UrlModel & $source_url, $pagecontent, $only_if_missing = TRUE) {/*{{{*/
-
-		$journal_parser = new SenateJournalParseUtility();
-		$metadata       = $journal_data;
-		$journal_head   = $journal_parser->filter_nested_array($journal_data,'#[tag*=HEAD]',0);
-		$metadata       = $journal_parser->filter_nested_array($metadata,'#metadata[tag*=META]',0);
-
-		$id = $this->fetch_by_congress_sn( $metadata['congress'], $metadata['short_session'], $journal_head['sn'] );
-
-    $this->syslog(__FUNCTION__, __LINE__, "(marker) Record for Journal No. {$journal_head['sn']} " . (is_null($id) ? "missing" : "cached #{$id}"));
-
-		if ( is_null($id) ) {
-			$id = $this->
-				set_title("{$journal_head['section']}, {$metadata['congress']} Congress, {$metadata['session']}")->
-				set_url($source_url->get_url())->
-				set_sn($journal_head['sn'])->
-				set_session_tag($metadata['short_session'])->
-				set_congress_tag($metadata['congress'])->
-				set_last_fetch(time())->
-				set_content($pagecontent)->
-				set_pdf_url($journal_head['pdf']['url'])->
-				stow();
-		}
-    return $id;
-	}/*}}}*/
 
 	function & set_title($v) { $this->title_vc256uniq = $v; return $this; }
 	function get_title($v = NULL) { if (!is_null($v)) $this->set_title($v); return $this->title_vc256uniq; }
@@ -97,5 +54,6 @@ class SenateJournalDocumentModel extends SenateDocCommonDocumentModel {
 
 	function & set_session_tag($v) { $this->session_tag_vc8 = $v; return $this; }
 	function get_session_tag($v = NULL) { if (!is_null($v)) $this->set_session_tag($v); return $this->session_tag_vc8; }
+
 }
 

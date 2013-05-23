@@ -1,14 +1,14 @@
 <?php
 
 /*
- * Class SenateResolutionDocumentModel
+ * Class SenateHousebillDocumentModel
  * Legiscope - web site reflection framework
  *
  * Antonio A Hilario
  * Release license terms: GNU Public License V2
  */
 
-class SenateResolutionDocumentModel extends SenateDocCommonDocumentModel {
+class SenateHousebillDocumentModel extends SenateDocCommonDocumentModel {
   
   var $title_vc256 = NULL;
 	var $description_vc4096 = NULL;
@@ -30,9 +30,11 @@ class SenateResolutionDocumentModel extends SenateDocCommonDocumentModel {
 
 	var $journal_SenateJournalDocumentModel = NULL;
 
-  function __construct() {
-    parent::__construct();
-  }
+	function __construct() {
+		parent::__construct();
+		//$this->dump_accessor_defs_to_syslog();
+		//$this->recursive_dump($this->get_attrdefs(),'(marker) "+++++++"');
+	}
 
 	function & set_text($v) { $this->title_vc256 = $v; return $this; }
 	function get_text($v = NULL) { if (!is_null($v)) $this->set_title($v); return $this->title_vc256; }
@@ -87,6 +89,7 @@ class SenateResolutionDocumentModel extends SenateDocCommonDocumentModel {
 
   function & set_significance($v) { $this->significance_vc16 = $v; return $this; }
   function get_significance($v = NULL) { if (!is_null($v)) $this->set_significance($v); return $this->significance_vc16; }
+
 
 }
 
