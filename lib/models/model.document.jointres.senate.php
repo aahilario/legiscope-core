@@ -1,14 +1,14 @@
 <?php
 
 /*
- * Class SenateResolutionDocumentModel
+ * Class SenateJointresDocumentModel
  * Legiscope - web site reflection framework
  *
  * Antonio A Hilario
  * Release license terms: GNU Public License V2
  */
 
-class SenateResolutionDocumentModel extends SenateDocCommonDocumentModel {
+class SenateJointresDocumentModel extends SenateDocCommonDocumentModel {
   
   var $title_vc256 = NULL;
 	var $description_vc4096 = NULL;
@@ -28,7 +28,6 @@ class SenateResolutionDocumentModel extends SenateDocCommonDocumentModel {
 	var $legislative_history_vc8192 = NULL;
 	var $filing_date_dtm = NULL;
 
-
 	var $main_referral_comm_vc64 = NULL;
 	var $secondary_committee_vc64 = NULL;
 	var $significance_vc16 = NULL;
@@ -36,6 +35,7 @@ class SenateResolutionDocumentModel extends SenateDocCommonDocumentModel {
 	var $journal_SenateJournalDocumentModel = NULL;
   var $committee_SenateCommitteeModel = NULL;
   var $senator_SenatorDossierModel = NULL;
+
 
   function __construct() {
     parent::__construct();
@@ -224,7 +224,7 @@ EOH;
     $this->debug_method    = FALSE;
 
     $document_contents = $this->join_all()->where(array('AND' => array(
-      '`a`.`id`' => $this->get_id(),
+      '`a`.`id`' => $id,
       // Do not assert additional constraints; we want all Joined properties
       //'{journal}.`congress_tag`' => $congress_tag,
       //'{journal_senate_journal_document_model}.`congress_tag`' => $congress_tag
@@ -239,7 +239,6 @@ EOH;
 
     return $id;
   }/*}}}*/
-
 
 }
 
