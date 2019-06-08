@@ -38,9 +38,9 @@ function filter_server($v, $if_unset = NULL) {
     : $if_unset; 
 }
 
-
+if ( defined("ENABLE_WEBDRIVER") && constant("ENABLE_WEBDRIVER") ) {
 require_once( SYSTEM_BASE . "/../PHPWebDriver/WebDriver.php");
-
+}
 class SystemUtility extends DatabaseUtility {
 
   protected $session_id = NULL;
