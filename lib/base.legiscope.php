@@ -48,7 +48,7 @@ class LegiscopeBase extends SystemUtility {
     $initcaps    = create_function('$a', 'return ucfirst($a);');
     $nameparts   = array_map($initcaps, explode('.', $matches[2][0]));
     if (self::$enable_debug)  syslog( LOG_INFO, "----------------- " . print_r($nameparts,TRUE));
-    if ( count($nameparts > 3) ) {
+    if ( is_array($nameparts) && (count($nameparts) > 3) ) {
       krsort($nameparts);
       $nameparts = array_values($nameparts);
       while ( count($nameparts) > 3 ) array_pop($nameparts);
@@ -1133,17 +1133,17 @@ class LegiscopeBase extends SystemUtility {
     exit(0);
   }/*}}}*/
 
-  public static function emit_basemap($scale = NULL, $return = FALSE) {/*{{{*/
+  public static function emit_basemap($scale = NULL, $return = FALSE, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html' ) {/*{{{*/
     $m = str_replace(
       array(
         '{svg_inline}',
         '{scale}',
       ),
       array(
-        static::$singleton->transform_svgimage(SYSTEM_BASE . "/../images/admin/philippines-4c.svg"),
+        static::$singleton->transform_svgimage($imagepath),
         is_null($scale) ? 1.4 : floatval($scale),
       ),
-      static::$singleton->get_template('map.html','global')
+      static::$singleton->get_template($template_basename,$template_set)
     );
     if ( $return ) return $m;
     echo $m;
