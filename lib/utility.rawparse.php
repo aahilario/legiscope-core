@@ -622,7 +622,10 @@ EOH;
     else if (is_array($this->current_tag)) {
       // Remove all content added to the filtered document array
       // since the opening tag was inserted into the tag stack
-      $start = $this->current_tag['position'];
+      $start = 0;
+      if ( array_key_exists('position', $this->current_tag) ) {
+        $start = $this->current_tag['position'];
+      }
       $end = count($this->filtered_doc);
       $last_removed = "[NONE]";
       // $this->syslog(__FUNCTION__,__LINE__, "Removing children of {$tag} from {$start} to {$end}");
@@ -932,7 +935,10 @@ EOH;
       }
       $keep_container = FALSE;
     }
-    $this->add_to_container_stack(array_filter($this->current_tag));
+    $ctag = array_filter($this->current_tag);
+    $this->current_tag = $ctag;
+    $ctag = NULL;
+    $this->add_to_container_stack($this->current_tag);
     $this->push_tagstack();
     return $keep_container;
   }/*}}}*/

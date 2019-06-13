@@ -1133,6 +1133,26 @@ class LegiscopeBase extends SystemUtility {
     exit(0);
   }/*}}}*/
 
+  public static function transform_svg(& $parameters, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html' ) {/*{{{*/
+    $patterns = [];
+    $replacements = [];
+    foreach ($parameters as $keys => $values) {
+      $patterns[] = "{{$keys}}";
+      $replacements[] = $values;
+    }
+    return str_replace(
+      array_merge(
+        $patterns,
+        [ '{svg_inline}' ]
+      ),
+      array_merge(
+        $replacements,
+        [ static::$singleton->transform_svgimage($imagepath) ]
+      ),
+      static::$singleton->get_template($template_basename,$template_set)
+    );
+  }/*}}}*/
+
   public static function emit_basemap($scale = NULL, $return = FALSE, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html' ) {/*{{{*/
     $m = str_replace(
       array(
