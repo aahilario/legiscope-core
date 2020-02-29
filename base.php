@@ -263,12 +263,17 @@ EOH;
     }
   }/*}}}*/
 
+  $alt_target_filename = preg_replace('/\.php$/','.class.php', $target_filename);
+
   if ( file_exists($target_filename) ) {
     if ( $debug_method ) syslog( LOG_INFO, "- Try to load {$target_filename} for class {$classname} " . ini_get('include_path') . " cwd " . getcwd() );
     require_once($target_filename);
   }
-  else {
-    if ( $debug_method ) syslog( LOG_INFO, "- No file {$target_filename} for class {$classname} in " . ini_get('include_path') . " cwd " . getcwd() );
+  else if ( file_exists($alt_target_filename) ) {
+    if ( $debug_method ) syslog( LOG_INFO, "- Try to load {$alt_target_filename} for class {$classname} " . ini_get('include_path') . " cwd " . getcwd() );
+    require_once($alt_target_filename);
+  } else {
+    if ( $debug_method ) syslog( LOG_INFO, "- No file {$target_filename} or {$alt_target_filename} for class {$classname} in " . ini_get('include_path') . " cwd " . getcwd() );
   }
   // if ( class_exists($classname) ) syslog( LOG_INFO, "- Class {$classname} exists at tail of spl_autoload()" );
 },TRUE);
