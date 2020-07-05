@@ -73,3 +73,4 @@ define('DBNAME', '');
 // Model handling
 define('DISABLE_CLASS_AUTOGENERATE',FALSE);
 define('LS_SYNCHRONIZE_MODEL_STRUCTURE', TRUE); // Set to FALSE to prevent synchronizing on-disk structure with Model object structure
+define('CORE_AUTOGENERATE_CLASSDEFS', TRUE); // Set FALSE to prevent generating missing classes.  See app/core.php
