@@ -19,7 +19,8 @@ function nonempty_array_element($a, $v, $defaultval = NULL) {
   return (is_array($a) && array_key_exists($v, $a) && !empty($a[$v])) ? $a[$v] : $defaultval;
 }
 
-function camelcase_to_array($classname) {
+function camelcase_to_array($classname)
+{
   $name_components = array(0 => NULL);
   $ucase_cname     = strtoupper($classname);
   $last_matchpos   = 0;

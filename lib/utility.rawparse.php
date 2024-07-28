@@ -157,6 +157,7 @@ EOH;
 
     if ( !is_null($docpath) ) {
       $this->filtered_containers = $this->containers;
+      syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): Executing filter_nested_array" );
       return $this->filter_nested_array($this->filtered_containers, $docpath, $reduce_to_element);
     }
     return $this->containers;
@@ -356,13 +357,13 @@ EOH;
       }
 
       if ( $errors_count > 0 ) {
-      $timestamp_sec = time();
-      $milliseconds = round(microtime(true) * 10000);
-      $timestamp = "{$timestamp_sec}-{$milliseconds}";
-      syslog( LOG_INFO, "TS: {$timestamp} (" . strlen($raw_html) . ")" );
-      file_put_contents( "/var/www/avahilario.net/cache/{$timestamp}.str", $raw_html, LOCK_EX );
+        $timestamp_sec = time();
+        $milliseconds = round(microtime(true) * 10000);
+        $timestamp = "{$timestamp_sec}-{$milliseconds}";
+        syslog( LOG_INFO, "TS: {$timestamp} (" . strlen($raw_html) . ")" );
+        file_put_contents( "/var/www/avahilario.net/cache/{$timestamp}.str", $raw_html, LOCK_EX );
 
-}
+      }
     }
 
     // Postprocessing
@@ -397,7 +398,7 @@ EOH;
 
   function process_promise_stack() {/*{{{*/
     // Process deferred tag operations ("promises")
-    $debug_method = FALSE;
+    $debug_method = TRUE;
     if ( 0 < count($this->promise_stack) ) {
       if ( $debug_method ) $this->syslog(__FUNCTION__,__LINE__,"(marker) Handle stacked tag promises: " . count($this->promise_stack) . " for " . get_class($this));
       $containerset =& $this->get_containers();
@@ -715,7 +716,7 @@ EOH;
     }
     else if ( array_key_exists("children", $a) ) {
       array_push($this->article,array_keys($a['children']));
-      array_walk($a['children'], create_function('& $a, $k, $s', '$s->cleanup_article($a, $k);'), $this);
+      array_walk($a['children'], function(& $a, $k, $s) { $s->cleanup_article($a, $k);}, $this);
       array_pop($this->article);
     }
   }/*}}}*/
@@ -725,14 +726,10 @@ EOH;
     $this->article = array();
 
     $this->reorder_with_sequence_tags($data);
-    array_walk($data,create_function(
-      '& $a, $k, $s', 'if ( is_array($a) && array_key_exists("children",$a) ) $s->reorder_with_sequence_tags($a["children"]);'
-    ),$this);
+    array_walk($data,function(& $a, $k, $s) { if ( is_array($a) && array_key_exists("children",$a) ) $s->reorder_with_sequence_tags($a["children"]); }, $this);
 
     array_push($this->article,array_keys($data['children']));
-    array_walk($data['children'], create_function(
-      '& $a, $k, $s', '$s->cleanup_article($a, $k);'
-    ), $this);
+    array_walk($data['children'], function(& $a, $k, $s) { $s->cleanup_article($a, $k); }, $this);
 
     $this->article = array();
 
@@ -751,7 +748,7 @@ EOH;
       $container_sethash = sha1(base64_encode(print_r($container_def,TRUE) . ' ' . mt_rand(10000,100000)));
       $container_def['sethash'] = $container_sethash;
       array_push($this->container_stack, $container_def);
-      $this->syslog( __FUNCTION__, __LINE__, "(marker) -- - -- - !! Attempt to add tag to empty stack. Added faux container [{$container_sethash}]");
+      if (C('DEBUG_'.get_class($this))) $this->syslog( __FUNCTION__, __LINE__, "(marker) -- - -- - !! Attempt to add tag to empty stack. Added faux container [{$container_sethash}]");
     }
     if ( is_null($target_tag) ) {
       $container = array_pop($this->container_stack);
@@ -759,6 +756,7 @@ EOH;
       $link_data['sethash'] = array_element($container,'sethash');
       $link_data['found_index'] = NULL;
       array_push($this->container_stack, $container);
+      if (C('DEBUG_'.get_class($this))) syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): A" . count($this->container_stack) );
       return TRUE;
     }
     $found_index = NULL;
@@ -770,10 +768,12 @@ EOH;
       $link_data['found_index'] = $found_index;
       $link_data['sethash'] = array_element($this->container_stack[$found_index],'sethash');
       $this->container_stack[$found_index]['children'][] = $link_data;
+      if (C('DEBUG_'.get_class($this))) syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): B" );
       return TRUE;
     } else {
       if (C('DEBUG_'.get_class($this))) $this->syslog( __FUNCTION__, __LINE__, "(marker) Lost tag content" );
     }
+    if (C('DEBUG_'.get_class($this))) syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): C" );
     return FALSE;
   }/*}}}*/
 
@@ -1079,7 +1079,6 @@ EOH;
     $this->terminated = $v;
     return $this;
   }/*}}}*/
-
 
   function & current_tag() {/*{{{*/
     $this->pop_tagstack();

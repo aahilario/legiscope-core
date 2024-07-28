@@ -1,6 +1,7 @@
 <?php
 
-class DatabaseUtility extends ReflectionClass {
+class DatabaseUtility extends ReflectionClass
+{/*{{{*/
 
   // TODO:  Permit/require derived classes to maintain own copy of the database handle
   static $dbhandle               = NULL;
@@ -100,7 +101,7 @@ class DatabaseUtility extends ReflectionClass {
     unset($this->attrlist           );
   }/*}}}*/
 
-  private final function initialize_db_handle() {/*{{{*/
+  private function initialize_db_handle() {/*{{{*/
     if ( is_null(self::$dbhandle) ) {
       $plugin_classname = C('DBTYPE') . 'DatabasePlugin'; 
       self::$dbhandle = new $plugin_classname(DBHOST, DBUSER, DBPASS, DBNAME); 
@@ -289,7 +290,7 @@ EOS;
       ;
   }/*}}}*/
 
-  private final function fetch_typemap(& $attrinfo, $mode = NULL) {/*{{{*/
+  private function fetch_typemap(& $attrinfo, $mode = NULL) {/*{{{*/
 
     // Get type map information for a SINGLE model attribute.
     $debug_method = C('DEBUG_'.__FUNCTION__,FALSE);
@@ -404,7 +405,7 @@ EOS;
     return $typemap;
   }/*}}}*/
 
-  private final function construct_backing_table($tablename, $members) 
+  private function construct_backing_table($tablename, $members) 
   {/*{{{*/
     $debug_method = C('DEBUG_'.__FUNCTION__,FALSE);
     if ( $debug_method ) {
@@ -1678,7 +1679,8 @@ EOS;
     return $this;
   }/*}}}*/
 
-  function retrieved_record_difference($stowable_content, $debug_method = FALSE) {
+  function retrieved_record_difference($stowable_content, $debug_method = FALSE)
+  {
     // Return the difference between a stowable content array
     // and the result of an IMMEDIATELY preceding retrieve() call.
     //
@@ -1999,7 +2001,7 @@ EOS;
     return $this;
   }/*}}}*/
 
-  final private function recursive_dump_worker($a, $depth = 0, $prefix = NULL) {/*{{{*/
+  private function recursive_dump_worker($a, $depth = 0, $prefix = NULL) {/*{{{*/
     if ( !(FALSE === C('SLOW_DOWN_RECURSIVE_DUMP')) ) usleep(C('SLOW_DOWN_RECURSIVE_DUMP'));
     foreach ( $a as $key => $val ) {
       $logstring = is_null($prefix) 
@@ -2122,8 +2124,8 @@ EOP
     // then these children are reordered using that ordinal value.
     if ( is_array($c) ) {
       if ( array_key_exists('children', $c) ) return $this->reorder_with_sequence_tags($c['children']);
-      $sequence_num = create_function('$a', 'return is_array($a) ? array_element($a,"seq",array_element(array_element($a,"attrs",array()),"seq")) : NULL;');
-      $filter_src   = create_function('$a', '$rv = (is_array($a) && array_key_exists("seq",$a)) ? $a : (is_array($a) && is_array(array_element($a,"attrs")) && array_key_exists("seq",$a["attrs"]) ? $a : NULL); if (!is_null($rv)) { unset($rv["attrs"]["seq"]); unset($rv["seq"]); }; return $rv;');
+      $sequence_num = function($a) { return is_array($a) ? array_element($a,"seq",array_element(array_element($a,"attrs",array()),"seq")) : NULL; };
+      $filter_src   = function($a) { $rv = (is_array($a) && array_key_exists("seq",$a)) ? $a : (is_array($a) && is_array(array_element($a,"attrs")) && array_key_exists("seq",$a["attrs"]) ? $a : NULL); if (!is_null($rv)) { unset($rv["attrs"]["seq"]); unset($rv["seq"]); }; return $rv; };
       $containers   = array_filter(array_map($sequence_num, $c));
       if ( is_array($containers) && (0 < count($containers))) {
         $filtered = array_map($filter_src, $c);
@@ -2145,31 +2147,36 @@ EOP
     return $this;
   }/*}}}*/
 
-  function resequence_children(& $containers) {/*{{{*/
+  function resequence_children(& $containers) 
+  {/*{{{*/
     return array_walk(
       $containers,
-      create_function('& $a, $k, & $s', '$s->reorder_with_sequence_tags($a);'),
+      function(& $a, $k, $s) { $s->reorder_with_sequence_tags($a); },
       $this
     );
   }/*}}}*/
 
-  function filter_nested_array(& $a, $docpath, $reduce_to_element = FALSE) {/*{{{*/
+  function filter_nested_array(& $a, $docpath, $reduce_to_element = FALSE) 
+  {/*{{{*/
     $filter_map = $this->get_map_functions($docpath);
     if ( $this->debug_operators ) {/*{{{*/
-      $this->syslog(__FUNCTION__,__LINE__,"------ (marker) Containers to process: " . count($this->containers));
-      $this->recursive_dump($filter_map,'(marker)');
+      $this->syslog(__FUNCTION__,__LINE__,"------ (marker) Container to process: " .  count($this->containers) );
+      $this->recursive_dump($a,'(Content)');
+      $this->recursive_dump($filter_map,'(Filter map)');
     }/*}}}*/
     foreach ( $filter_map as $i => $map ) {
+      // $map is intended to be a function that takes a single parameter
       if ( $i == 0 ) {
         if ( $this->debug_operators ) {/*{{{*/
           $n = count($a);
-          $this->syslog(__FUNCTION__,__LINE__,"A ------ (marker) N = {$n} Map: {$map}");
+          $this->syslog(__FUNCTION__,__LINE__,"A ------ (marker) N = {$n} Map: " . 
+          (is_callable($map) ? dump_callable($map) : $map) );
         }/*}}}*/
         if ( is_array($a) ) {
-          $a = array_filter(array_map(create_function('$a',$map), $a));
+          $a = array_filter(array_map($map, $a));
           if ( $this->debug_operators ) {/*{{{*/
             $n = count($a);
-            $this->syslog(__FUNCTION__,__LINE__,"A <<<<<< (marker) N = {$n} Map: {$map}");
+            $this->syslog(__FUNCTION__,__LINE__,"A <<<<<< (marker) N = {$n} Map:" . (is_callable($map) ? dump_callable($map) : print_r($map,TRUE) ));
           }/*}}}*/
           $this->resequence_children($a);
         }
@@ -2178,11 +2185,11 @@ EOP
           $this->syslog(__FUNCTION__,__LINE__,"B ------ (marker) N = {$n} Map: {$a}");
         }/*}}}*/
         foreach ( $a as $seq => $m ) {
-          $a[$seq] = array_filter(array_map(create_function('$a',$map), $m));
+          $a[$seq] = array_filter(array_map($map, $m));
         }
       }
       if ( $this->debug_operators ) {/*{{{*/
-        $this->syslog(__FUNCTION__,__LINE__,"(marker) - Map #{$i} - {$map}");
+        $this->syslog(__FUNCTION__,__LINE__,"(marker) - Map #{$i} - " . (is_callable($map) ? dump_callable($map) : print_r($map,TRUE) ));
         $this->recursive_dump($a,'(marker)');
       }/*}}}*/
     }
@@ -2198,7 +2205,6 @@ EOP
     return $a;
     
   }/*}}}*/
-
   /** Join model object methods **/
 
   function & get_join_object($property, $which, $meta = 'obj') {/*{{{*/
@@ -2360,4 +2366,4 @@ EOP
 		return iconv( 'UTF-8', strtoupper($this->content_type), $s );
 	}/*}}}*/
 
-}
+}/*}}}*/

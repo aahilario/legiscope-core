@@ -45,7 +45,7 @@ class LegiscopeBase extends SystemUtility {
     $base_regex  = '/^(www\.)?(([^.]+[.]?)*)/i';
     $matchresult = preg_match_all($base_regex, $hostname, $matches);
     if (self::$enable_debug)  syslog( LOG_INFO, "----------------- (" . gettype($matchresult) . " {$matchresult})" . print_r($matches,TRUE));
-    $initcaps    = create_function('$a', 'return ucfirst($a);');
+    $initcaps    = function($a) { return ucfirst($a); };
     $nameparts   = array_map($initcaps, explode('.', $matches[2][0]));
     if (self::$enable_debug)  syslog( LOG_INFO, "----------------- " . print_r($nameparts,TRUE));
     if ( is_array($nameparts) && (count($nameparts) > 3) ) {
@@ -58,6 +58,7 @@ class LegiscopeBase extends SystemUtility {
     if (self::$enable_debug)  syslog( LOG_INFO, "----------------- " . print_r($nameparts,TRUE));
     $classname   = join('', $nameparts);
     $hostregex   = '/^((www|ireport)\.)+((gmanetwork|sec|denr|dbm|senate|congress)\.)*(gov\.ph|com)/i';
+    syslog( LOG_INFO, "----------------- singleton: {$classname}" );
     static::$singleton = (1 == preg_match($hostregex, $hostname)) && @class_exists($classname)
       ? new $classname
       : new LegiscopeBase()
@@ -86,20 +87,13 @@ class LegiscopeBase extends SystemUtility {
   }/*}}}*/
 
   function transform_svgimage($image) {/*{{{*/
-    $debug_method = C('DEBUG_'.__FUNCTION__,FALSE);
     $svg = new SvgParseUtility();
     $svg->transform_svgimage($image);
     $image = $svg->get_containers('attrs,children[tagname*=svg]',0);
     $image = nonempty_array_element($image,'children',array());
     $this->reorder_with_sequence_tags($image);
     $this->filter_nested_array($image,'tagname,attrs,children[tagname*=path|g|i]');
-    if ( $debug_method ) {
-      $this->recursive_dump($image,"(marker)");
-    }
     $transformed = $svg->reconstruct_svg($image);
-    if ( $debug_method ) {
-    $this->recursive_dump($svg->extracted_styles,"(marker)");
-    }
     $svg = NULL;
     return $transformed;
   }/*}}}*/
@@ -150,7 +144,7 @@ class LegiscopeBase extends SystemUtility {
     }
   }/*}}}*/
 
-  final private function handle_plugin_context() {/*{{{*/
+  private function handle_plugin_context() {/*{{{*/
 
     $debug_method = C('DEBUG_'.__FUNCTION__,FALSE);
     // Modify $_REQUEST by extracting an action value from the request URI 
@@ -367,9 +361,8 @@ class LegiscopeBase extends SystemUtility {
       // Reencode every string element of the JSON response array
       $json_last_error = json_last_error_msg();
       JoinFilterUtility::syslog(__FUNCTION__,__LINE__,"(critical) - - - Reencoding due to error: {$json_last_error}" );
-      array_walk($s,create_function(
-        '& $a, $k', 'if ( is_string($a) ) $a = utf8_encode($a);'
-      ));
+      $to_utf = function( & $a, $k ) { if ( is_string($a) ) $a = utf8_encode($a); };
+      array_walk($s,$to_utf);
       $pagecontent = json_encode($s,JSON_UNESCAPED_UNICODE);
       $json_last_error = json_last_error_msg();
       JoinFilterUtility::syslog(__FUNCTION__,__LINE__,"(critical) - - - JSON UTF8 encoding error. Reencode result: {$json_last_error}" );
@@ -448,13 +441,12 @@ class LegiscopeBase extends SystemUtility {
     if ( !is_null($query_component) ) {/*{{{*/
       // Extract and sort query variable names
       $query_component = explode('&',$query_component);
-      array_walk($query_component,create_function(
-        '& $a, $k', '$p = explode("=",$a); $a = array("var" => array_element($p,0), "val" => array_element($p,1));'
-      ));
+      $to_var_val = function(& $a, $k) { $p = explode("=",$a); $a = array("var" => array_element($p,0), "val" => array_element($p,1)); };
+      array_walk($query_component,$to_var_val);
       if ( 0 < count($query_component) ) { 
         $query_component = array_combine(
-          array_map(create_function('$a', 'return $a["var"];'), $query_component),
-          array_map(create_function('$a', 'return $a["val"];'), $query_component)
+          array_map(function($a) { return $a["var"]; }, $query_component),
+          array_map(function($a) { return $a["val"]; }, $query_component)
         );
         // This should basically contain a hash map of query parameters.
         if ( $debug_method ) $this->recursive_dump($query_component,"(marker) -- HDS");
@@ -555,9 +547,7 @@ class LegiscopeBase extends SystemUtility {
     // Now try to construct a Y/M/D path handler
     $dir_sans_path = explode('/',$url_components['path']);
     $tail = array_pop($dir_sans_path);
-    array_walk($dir_sans_path,create_function(
-      '& $a, $k', '$a = preg_replace("@([0-9]{1,})@","([0-9]{1,".strlen($a)."})",$a);'
-    ));
+    array_walk($dir_sans_path,function(& $a, $k) { $a = preg_replace("@([0-9]{1,})@","([0-9]{1,".strlen($a)."})",$a); });
     $pathregex = join('/', $dir_sans_path); 
     array_push($dir_sans_path, $tail);
     $test_url = $url_components;
@@ -590,7 +580,7 @@ class LegiscopeBase extends SystemUtility {
 
   function extract_form($containers) {/*{{{*/
     $debug_method = C('DEBUG_'.__FUNCTION__,FALSE);
-    $extract_form   = create_function('$a', 'return array_key_exists("tagname", $a) && ("FORM" == strtoupper($a["tagname"])) ? $a : NULL;');
+    $extract_form   = function($a){ return array_key_exists("tagname", $a) && ("FORM" == strtoupper($a["tagname"])) ? $a : NULL; };
     $paginator_form = array_values(array_filter(array_map($extract_form, $containers)));
     if ( $debug_method ) $this->recursive_dump($paginator_form,'(marker) Old');
     return $paginator_form;
@@ -897,7 +887,7 @@ class LegiscopeBase extends SystemUtility {
 
     if ( $session_data_present && is_array($session_data) && array_key_exists('COOKIES', $session_data) ) {
       $this->syslog(__FUNCTION__, __LINE__, "Extracting cookies for host {$host_hash}");
-      $extract_cookiepairs = create_function('$a', 'return $a["name"] . "=" . $a["value"];');
+      $extract_cookiepairs = function($a) { return $a["name"] . "=" . $a["value"]; };
       $this->recursive_dump($session_data['COOKIES'],__LINE__);
       $session_cookies = join('; ', array_map($extract_cookiepairs, $session_data['COOKIES']));
     } else {
@@ -1133,23 +1123,35 @@ class LegiscopeBase extends SystemUtility {
     exit(0);
   }/*}}}*/
 
-  public static function transform_svg(& $parameters, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html' ) {/*{{{*/
+  public static function transform_svg(& $parameters, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html' )
+  {/*{{{*/
     $patterns = [];
     $replacements = [];
+
+    syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): Generating {$imagepath} with parameters:" );
+    recursive_dump( $parameters, "------" );
+
     foreach ($parameters as $keys => $values) {
       $patterns[] = "{{$keys}}";
       $replacements[] = $values;
     }
+
+    $search_for = array_merge(
+      $patterns,
+      [ '{svg_inline}' ]
+    );
+    // REFACTOR 
+    $replace_with = array_merge(
+      $replacements,
+      [ static::$singleton->transform_svgimage($imagepath) ]
+    );
+
+    $template_subject = static::$singleton->get_template($template_basename,$template_set);
+
     return str_replace(
-      array_merge(
-        $patterns,
-        [ '{svg_inline}' ]
-      ),
-      array_merge(
-        $replacements,
-        [ static::$singleton->transform_svgimage($imagepath) ]
-      ),
-      static::$singleton->get_template($template_basename,$template_set)
+      $search_for,
+      $replace_with,
+      $template_subject 
     );
   }/*}}}*/
 

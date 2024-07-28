@@ -8,7 +8,8 @@
  * Release license terms: GNU Public License V2
  */
 
-class SvgParseUtility extends RawparseUtility {
+class SvgParseUtility extends RawparseUtility
+{/*{{{*/
   
   var $extracted_styles = array();
   var $image_filename = NULL;
@@ -226,12 +227,10 @@ class SvgParseUtility extends RawparseUtility {
         // Generate style lookup table 
         unset($attrs['style']);
         $style = explode(';',$style);
-        array_walk($style,create_function(
-          '& $a, $k', '$a = explode(":",$a); $a = array("attr" => $a[0], "val" => $a[1]);'
-        ));
+        array_walk($style, function(& $a, $k) { $a = explode(":",$a); $a = array("attr" => $a[0], "val" => $a[1]); });
         $style = array_combine(
-          array_map(create_function('$a', 'return $a["attr"];'),$style),
-          array_map(create_function('$a', 'return $a["val"];'),$style)
+          array_map(function($a) {return $a["attr"];},$style),
+          array_map(function($a) {return $a["val"];},$style)
         );
         ksort($style);
         // Keep all unique style instances
@@ -261,9 +260,7 @@ class SvgParseUtility extends RawparseUtility {
         }
       }/*}}}*/
       $attributes = array_filter($attrs);
-      array_walk($attributes,create_function(
-        '& $a, $k', '$a = "{$k}=\"{$a}\"";'
-      ));
+      array_walk($attributes,function(& $a, $k) { $a = "{$k}=\"{$a}\""; });
       $attributes = join(' ', $attributes);
       $has_closing_tag = $tagname == 'polygon' ? FALSE : TRUE;
       $closing_tag = $has_closing_tag ? NULL : " /";
@@ -281,10 +278,11 @@ EOH;
     return $pagecontent;
   }/*}}}*/
 
-  function transform_svgimage($image = NULL) {/*{{{*/
+  function transform_svgimage($image = NULL) 
+  {/*{{{*/
 
-    $debug_method = TRUE;
-    $this->debug_tags = FALSE; // $debug_method; // FALSE;
+    $debug_method = FALSE;
+    $this->debug_tags = TRUE; // $debug_method; // FALSE;
     $this->reset();
 
     // Retain case for all tags
@@ -299,7 +297,7 @@ EOH;
 
     $loadresult = $this->dom->loadXML(file_get_contents($image));
 
-    $this->syslog(__FUNCTION__,__LINE__,
+    if ( $debug_method ) $this->syslog(__FUNCTION__,__LINE__,
       "(marker) Load result (" .gettype($loadresult) . ")" . print_r($loadresult,TRUE) .
       " {$image}");
 
@@ -308,6 +306,7 @@ EOH;
     $full_length  = mb_strlen($this->dom->saveXML());
     $chunk_length = 16384;
     if ( $debug_method ) $this->syslog(__FUNCTION__,__LINE__, "(marker) --------------------------- mb_strlen " . $full_length );
+
     for ( $offset = 0 ; $offset < $full_length ; $offset += $chunk_length ) {
       $is_final = ($offset + $chunk_length) >= $full_length;
       xml_parse($this->parser, mb_substr($this->dom->saveXML(), $offset, $chunk_length), $is_final);
@@ -354,5 +353,4 @@ EOH;
 
   }/*}}}*/
 
-}
-
+}/*}}}*/
