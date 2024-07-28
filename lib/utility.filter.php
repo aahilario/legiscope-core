@@ -11,13 +11,14 @@
 
 abstract class FilterUtility {
 
-	static $debug_operators = FALSE;
+	static $debug_operators = TRUE;
   
 	abstract static function get_selector_regex();
 
-  static function get_map_functions($docpath, $d = 0) {/*{{{*/
-
-    // A mutable alternative to XPath
+  static function get_map_functions($docpath, $d = 0) 
+  {/*{{{*/
+    $debug = FALSE;
+    // A mutable, recursing alternative to XPath
     // Extract content from parse containers
     $map_functions = array();
     // Disallow recursion beyond a depth we actually use. parse_html() returns a shallow nested array having at most depth 3 from a root entry.
@@ -29,7 +30,7 @@ abstract class FilterUtility {
 
     preg_match_all(static::get_selector_regex(), $docpath, $matches);
 
-    array_walk($matches,create_function('& $a, $k','$a = is_array($a) ? array_filter($a) : NULL; if (empty($a)) $a = "*";'));
+    array_walk($matches,function(& $a, $k) { $a = is_array($a) ? array_filter($a) : NULL; if (empty($a)) $a = "*";});
 
     $subjects   = $matches[2]; // 
     $selectors  = $matches[3]; // Key-value match pairs (A=B, match exactly; A*=B regex match)
@@ -37,30 +38,62 @@ abstract class FilterUtility {
 
     $conditions = array(); // Concatenate elements of this array to form the array_map condition
 
+    if ( $debug ) {
+      static::recursive_dump( [ $docpath ], '(marker) Input' );
+      static::recursive_dump( [
+        'subjects'   => $subjects,
+        'returnable' => $returnable,
+        'selectors'  => $selectors,
+      ], "(marker) Intermediate input" );
+    }
+
 		if ( is_array($selectors) ) foreach ( $selectors as $condition ) {
 
-      if ( !(1 == preg_match('@([^*=]*)(\*=|=)*(.*)@', $condition, $p)) ) {
+      if ( !(1 == preg_match('@([^*=]*)(\*=|=)*(.*)@', $condition, $p)) )
+      {/*{{{*/
         // A condition must take the form of an equality test.
         // The test itself is implemented as either a simple comparison or a regex match.
         static::syslog(__FUNCTION__,__LINE__,"--- WARNING: Unparseable condition. Terminating recursion.");
         return array();
-      }
+      }/*}}}*/
+
       $attr = $p[1];
       $conn = $p[2]; // *= for regex match; = for equality
       $val  = $p[3];
 
-      if (static::$debug_operators) {/*{{{*/
-        static::recursive_dump($p,"(marker) Selector components" );
-      }/*}}}*/
+      if ( $debug ) {
+        static::recursive_dump([
+          'attr' => $attr,
+          'conn' => $conn,
+          'val'  => $val,
+        ],"(marker) Selector components" );
+      }
 
       $attparts = '';
-      if ( !empty($attr) ) {
+      if ( strlen($attr) == 0 ) {
+        static::syslog(__FUNCTION__,__LINE__,"Tumifi: Empty attr" );
+      }
+      else {
         // Specify a match on nested arrays using [kd1:kd2] to match against
         // $a[kd1][kd2] 
-        foreach ( explode(':', $attr) as $sa ) {
-					$input_check = static::component_condition_input_check($sa, $attparts);
-					if ( !is_null($input_check) ) $conditions[] = $input_check;
-					$attparts .= static::component_attribute_parts($sa);
+        if ( $debug ) static::syslog( __FUNCTION__, __LINE__, "Tumifi: {$attr} - " . print_r( $attr, TRUE ) );
+        foreach ( explode(':', $attr) as $i => $sa ) {
+          // ???
+          if ( $debug ) static::syslog( __FUNCTION__, __LINE__, "----------------------------------" );
+          $input_check = static::component_condition_input_check($sa, $attparts);
+
+          if ( $debug ) static::syslog( __FUNCTION__, __LINE__, "Tumifi: input_check[{$i}]: " . (is_callable($input_check) ? dump_callable($input_check) : $input_check) );
+          if ( !is_null($input_check) ) $conditions[] = $input_check;
+
+          $attparts .= static::component_attribute_parts($sa);
+
+          if ( $debug ) static::syslog( __FUNCTION__, __LINE__, "Tumifi: attparts[{$i}]: {$attparts}" );
+        }
+        if ( $debug ) { 
+          $n = count( $conditions );
+          static::syslog( __FUNCTION__, __LINE__, "- - - - - - - - - - - - - - - - - " );
+          static::syslog( __FUNCTION__, __LINE__, "Tumifi [{$n}]: {$attr} - " . print_r( $attparts, TRUE ) );
+          static::syslog( __FUNCTION__, __LINE__, "----------------------------------" );
         }
       }
 
@@ -71,7 +104,8 @@ abstract class FilterUtility {
         // Allow condition '*' to stand for any matchable value; 
         // if an asterisk is specified, then the match for a specific
         // value is omitted, so only existence of the key is required.
-        if ( $val != '*' ) $conditions[] = static::get_condition_exact_match($attr,$val);
+        $condition_fragment = static::get_condition_exact_match($attr,$val); 
+        if ( $val != '*' ) $conditions[] = $condition_fragment; 
       } else if ($conn == '*=') {
         $split_val = explode('|', $val);
         $regex_modifier = NULL;
@@ -80,19 +114,24 @@ abstract class FilterUtility {
           array_pop($split_val);
           $val = join('|',$split_val);
         }
-        $conditions[] = static::get_condition_regex_match($val, $regex_modifier, $attparts);
+        $condition_fragment = static::get_condition_regex_match($val, $regex_modifier, $attparts);
+        $conditions[] = $condition_fragment;
         if ( $returnable == '*' ) $returnable = static::get_condition_regex_matched_returnable($attr);
       } else {
         static::syslog(__FUNCTION__,__LINE__,"Unrecognized comparison operator '{$conn}'");
       }
     }
 
+    if ( $debug ) static::recursive_dump($conditions,"(marker) Conditions" );
+
     if ( is_array($returnable) ) {
       if ( 1 == count($returnable) ) {
         // If the returnable is specified as '#', then all siblings of the matching element(s) are returned.
 				$returnable_match = static::get_returnable_value_array_singleentry($returnable, $d);
+        if ( $debug ) static::syslog(__FUNCTION__,__LINE__,"returnable_match = " . (is_callable($returnable_match) ? dump_callable($returnable_match) : $returnable_match) );
       } else {
         $returnable_match = static::get_returnable_value_array($returnable, $d);
+        if ( $debug ) static::syslog(__FUNCTION__,__LINE__,"returnable_match = " . (is_callable($returnable_match) ? dump_callable($returnable_match) : $returnable_match) );
       }
     } else {
       if ( $returnable == '*' ) {
@@ -103,29 +142,34 @@ abstract class FilterUtility {
         $returnable_match = $returnable;
       }
     }
-    $map_condition   = static::return_map_condition($conditions, $returnable_match, $d);
-    $map_functions[] = $map_condition;
+    if ( $debug ) static::syslog(__FUNCTION__,__LINE__,"returnable_match = " . (is_callable($returnable_match) ? dump_callable($returnable_match) : $returnable_match) );
 
-    if (static::$debug_operators) {/*{{{*/
+    $map_condition = static::return_map_condition($conditions, $returnable_match, $d);
+
+    if ( $debug ) static::syslog( __FUNCTION__, __LINE__, "Tumifi: map_condition: " . (is_callable($map_condition) ? dump_callable($map_condition) : $map_condition) );
+    $map_functions[] = $map_condition;
+    if ( $debug ) { 
       static::syslog(__FUNCTION__,__LINE__,"- (marker) Extracting from '{$docpath}'");
       static::recursive_dump($matches,"(marker) matches");
-      static::syslog(__FUNCTION__,__LINE__,"- (marker) Map function derived at depth {$d}: {$map_condition}");
       static::recursive_dump($conditions,"(marker) conditions");
-    }/*}}}*/
+    }
 
     if ( is_array($subjects) && 0 < count($subjects) ) {
       foreach ( $subjects as $subpath ) {
-        if (static::$debug_operators) {/*{{{*/
-          static::syslog(__FUNCTION__,__LINE__,"(marker) - Passing sub-path at depth {$d}: {$subpath}");
-        }/*}}}*/
+        if ( $debug ) static::syslog(__FUNCTION__,__LINE__,"(marker) - Passing sub-path at depth {$d}: {$subpath}");
         $submap = static::get_map_functions($subpath, $d+1);
         if ( is_array($submap) ) $map_functions = array_merge($map_functions, $submap);
       }
     }
 
+    if ( $debug ) {
+      static::syslog( __FUNCTION__, __LINE__, "Tumifi: Final map functions array" );
+      recursive_dump( [ $docpath ]  , '<-------------' );
+      recursive_dump( $map_functions, '------------->' );
+    }
+
     return $map_functions;
   }/*}}}*/
-
 
 	/** Duplicate utility methods **/
 
@@ -133,7 +177,7 @@ abstract class FilterUtility {
     if ( 1 == preg_match('@(WARNING|ERROR|MARKER)@i', $prefix) ) return TRUE;
     if ( TRUE === C('DEBUG_ALL') ) return TRUE;
     if ( 1 == preg_match('@([(]SKIP[)])@i', $prefix) ) return FALSE;
-    if ( FALSE === C('DEBUG_'.get_class(self)) ) return FALSE;
+    // if ( FALSE === C('DEBUG_'.get_class(self)) ) return FALSE;
 		return TRUE;
   }/*}}}*/
 
@@ -174,6 +218,8 @@ abstract class FilterUtility {
           $logstring .= ($val ? 'TRUE' : 'FALSE');
         else if ( empty($val) )
           $logstring .= '[EMPTY]';
+        else if ( is_callable($val) )
+          $logstring .= dump_callable($val);
         else
           $logstring .= substr("{$val}",0,500) . (strlen("{$val}") > 500 ? '...' : '');
         syslog( LOG_INFO, $logstring );

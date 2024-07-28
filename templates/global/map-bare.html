@@ -1,0 +1,25 @@
+<svg id="basemap" class="legiscope-svg-fullsize" version="1.1" baseProfile="full" viewBox="{xoff} {yoff} {dx} {dy}">
+<g id="legiscope-philippine-map">
+{svg_inline}
+</g>
+</svg>
+
+<script type="text/javascript">
+jQuery(document).ready(function(){
+  jQuery('[class*=legiscope-svg-fullsize]')
+    .find('[class*=svg-outline]').each(function(){
+      jQuery(this)
+        .attr('fill',jQuery(this).attr('oldfill'))
+        .unbind('mouseenter')
+        .unbind('mouseleave')
+        .unbind('click')
+        .bind('mouseenter',(function(e) {
+          jQuery(this).attr('fill','blue');
+        }))
+        .bind('mouseleave',(function(e) {
+          jQuery(this).attr('fill',jQuery(this).attr('oldfill'));
+        }));
+    });
+});
+</script>
+
