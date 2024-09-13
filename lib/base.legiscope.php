@@ -58,7 +58,6 @@ class LegiscopeBase extends SystemUtility {
     if (self::$enable_debug)  syslog( LOG_INFO, "----------------- " . print_r($nameparts,TRUE));
     $classname   = join('', $nameparts);
     $hostregex   = '/^((www|ireport)\.)+((gmanetwork|sec|denr|dbm|senate|congress)\.)*(gov\.ph|com)/i';
-    syslog( LOG_INFO, "----------------- singleton: {$classname}" );
     static::$singleton = (1 == preg_match($hostregex, $hostname)) && @class_exists($classname)
       ? new $classname
       : new LegiscopeBase()
@@ -1123,13 +1122,15 @@ class LegiscopeBase extends SystemUtility {
     exit(0);
   }/*}}}*/
 
-  public static function transform_svg(& $parameters, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html' )
+  public static function transform_svg(& $parameters, $imagepath = SYSTEM_BASE . "/../images/admin/philippines-4c.svg", $template_set = 'global', $template_basename = 'map.html', $debug = false )
   {/*{{{*/
     $patterns = [];
     $replacements = [];
 
-    syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): Generating {$imagepath} with parameters:" );
-    recursive_dump( $parameters, "------" );
+    if ( $debug ) {
+      syslog( LOG_INFO, get_class() . '::' . __FUNCTION__ . '(' . __LINE__ . "): Generating {$imagepath} with parameters:" );
+      recursive_dump( $parameters, "------" );
+    }
 
     foreach ($parameters as $keys => $values) {
       $patterns[] = "{{$keys}}";
